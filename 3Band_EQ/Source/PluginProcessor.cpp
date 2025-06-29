@@ -174,8 +174,8 @@ bool _3Band_EQAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* _3Band_EQAudioProcessor::createEditor()
 {
-    //return new _3Band_EQAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new _3Band_EQAudioProcessorEditor (*this);
+    //return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
