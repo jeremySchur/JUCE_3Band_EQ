@@ -27,11 +27,24 @@ _3Band_EQAudioProcessorEditor::_3Band_EQAudioProcessorEditor (_3Band_EQAudioProc
         addAndMakeVisible(comp);
     }
 
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->addListener(this);
+    }
+
+    startTimer(60);
+
     setSize (600, 400);
 }
 
 _3Band_EQAudioProcessorEditor::~_3Band_EQAudioProcessorEditor()
 {
+    const auto& params = audioProcessor.getParameters();
+    for (auto param : params)
+    {
+        param->removeListener(this);
+    }
 }
 
 //==============================================================================
@@ -157,7 +170,11 @@ void _3Band_EQAudioProcessorEditor::timerCallback()
 {
     if (parametersChanged.compareAndSetBool(false, true)) 
     {
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+        auto peakCoefficients = makePeakFilter(chainSettings, audioProcessor.getSampleRate());
+        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
 
+        repaint();
     }
 }
 
