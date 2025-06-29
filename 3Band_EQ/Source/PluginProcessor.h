@@ -92,6 +92,13 @@ private:
     using Coefficients = Filter::CoefficientsPtr;
     static void updateCoefficients(Coefficients& old, const Coefficients& replacements);
 
+    template<int index, typename ChainType, typename CoefficientType>
+    void update(ChainType& cut, const CoefficientType& cutCoefficients)
+    {
+        updateCoefficients(cut.template get<index>().coefficients, cutCoefficients[index]);
+        cut.template setBypassed<index>(false);
+    }
+
     template<typename ChainType, typename CoefficientType>
     void updateCutFilter(
         ChainType& cut,
@@ -105,33 +112,14 @@ private:
 
         switch (cutSlope)
         {
-        case Slope_12:
-            *cut.template get<0>().coefficients = *cutCoefficients[0];
-            cut.template setBypassed<0>(false);
-            break;
-        case Slope_24:
-            *cut.template get<0>().coefficients = *cutCoefficients[0];
-            cut.template setBypassed<0>(false);
-            *cut.template get<1>().coefficients = *cutCoefficients[1];
-            cut.template setBypassed<1>(false);
-            break;
-        case Slope_36:
-            *cut.template get<0>().coefficients = *cutCoefficients[0];
-            cut.template setBypassed<0>(false);
-            *cut.template get<1>().coefficients = *cutCoefficients[1];
-            cut.template setBypassed<1>(false);
-            *cut.template get<2>().coefficients = *cutCoefficients[2];
-            cut.template setBypassed<2>(false);
-            break;
         case Slope_48:
-            *cut.template get<0>().coefficients = *cutCoefficients[0];
-            cut.template setBypassed<0>(false);
-            *cut.template get<1>().coefficients = *cutCoefficients[1];
-            cut.template setBypassed<1>(false);
-            *cut.template get<2>().coefficients = *cutCoefficients[2];
-            cut.template setBypassed<2>(false);
-            *cut.template get<3>().coefficients = *cutCoefficients[3];
-            cut.template setBypassed<3>(false);
+            update<3>(cut, cutCoefficients);
+        case Slope_36:
+            update<2>(cut, cutCoefficients);
+        case Slope_24:
+            update<1>(cut, cutCoefficients);
+        case Slope_12:
+            update<0>(cut, cutCoefficients);
             break;
         }
     }
