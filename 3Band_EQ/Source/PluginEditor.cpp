@@ -9,24 +9,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-//==============================================================================
-_3Band_EQAudioProcessorEditor::_3Band_EQAudioProcessorEditor (_3Band_EQAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p),
-    peakFreqSliderAttachment(audioProcessor.apvts, "Peak Freq", peakFreqSlider),
-    peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
-    peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySlider),
-    lowCutFreqSliderAttachment(audioProcessor.apvts, "LowCut Freq", lowCutFreqSlider),
-    highCutFreqSliderAttachment(audioProcessor.apvts, "HighCut Freq", highCutFreqSlider),
-    lowCutSlopeSliderAttachment(audioProcessor.apvts, "LowCut Slope", lowCutSlopeSlider),
-    highCutSlopeSliderAttachment(audioProcessor.apvts, "HighCut Slope", highCutSlopeSlider)
+ResponseCurveComponent::ResponseCurveComponent(_3Band_EQAudioProcessor& p) : audioProcessor(p)
 {
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    for (auto* comp : getComps())
-    {
-        addAndMakeVisible(comp);
-    }
-
     const auto& params = audioProcessor.getParameters();
     for (auto param : params)
     {
@@ -34,11 +18,9 @@ _3Band_EQAudioProcessorEditor::_3Band_EQAudioProcessorEditor (_3Band_EQAudioProc
     }
 
     startTimer(60);
-
-    setSize (600, 400);
 }
 
-_3Band_EQAudioProcessorEditor::~_3Band_EQAudioProcessorEditor()
+ResponseCurveComponent::~ResponseCurveComponent()
 {
     const auto& params = audioProcessor.getParameters();
     for (auto param : params)
@@ -47,16 +29,39 @@ _3Band_EQAudioProcessorEditor::~_3Band_EQAudioProcessorEditor()
     }
 }
 
-//==============================================================================
-void _3Band_EQAudioProcessorEditor::paint (juce::Graphics& g)
+void ResponseCurveComponent::parameterValueChanged(int parameterIndex, float newVlaue)
+{
+    parametersChanged.set(true);
+}
+
+void ResponseCurveComponent::timerCallback()
+{
+    if (parametersChanged.compareAndSetBool(false, true))
+    {
+        auto sampleRate = audioProcessor.getSampleRate();
+        auto chainSettings = getChainSettings(audioProcessor.apvts);
+
+        auto peakCoefficients = makePeakFilter(chainSettings, sampleRate);
+        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+
+        auto lowCutCoefficients = makeLowCutFilter(chainSettings, sampleRate);
+        auto highCutCoefficients = makeHighCutFilter(chainSettings, sampleRate);
+
+        updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
+        updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
+
+        repaint();
+    }
+}
+
+void ResponseCurveComponent::paint(juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     using namespace juce;
 
     g.fillAll(Colours::black);
 
-    auto bounds = getLocalBounds();
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    auto responseArea = getLocalBounds();
 
     auto w = responseArea.getWidth();
 
@@ -82,20 +87,20 @@ void _3Band_EQAudioProcessorEditor::paint (juce::Graphics& g)
         if (!lowCut.isBypassed<0>())
         {
             mag *= lowCut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        } 
+        }
         if (!lowCut.isBypassed<1>())
         {
             mag *= lowCut.get<1>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        } 
+        }
         if (!lowCut.isBypassed<2>())
         {
             mag *= lowCut.get<2>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
-        } 
+        }
         if (!lowCut.isBypassed<3>())
         {
             mag *= lowCut.get<3>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
         }
-        
+
         if (!highCut.isBypassed<0>())
         {
             mag *= highCut.get<0>().coefficients->getMagnitudeForFrequency(freq, sampleRate);
@@ -139,6 +144,42 @@ void _3Band_EQAudioProcessorEditor::paint (juce::Graphics& g)
     g.strokePath(responseCurve, PathStrokeType(2.f));
 }
 
+//==============================================================================
+_3Band_EQAudioProcessorEditor::_3Band_EQAudioProcessorEditor (_3Band_EQAudioProcessor& p)
+    : AudioProcessorEditor (&p), audioProcessor (p),
+    responseCurveComponent(audioProcessor),
+    peakFreqSliderAttachment(audioProcessor.apvts, "Peak Freq", peakFreqSlider),
+    peakGainSliderAttachment(audioProcessor.apvts, "Peak Gain", peakGainSlider),
+    peakQualitySliderAttachment(audioProcessor.apvts, "Peak Quality", peakQualitySlider),
+    lowCutFreqSliderAttachment(audioProcessor.apvts, "LowCut Freq", lowCutFreqSlider),
+    highCutFreqSliderAttachment(audioProcessor.apvts, "HighCut Freq", highCutFreqSlider),
+    lowCutSlopeSliderAttachment(audioProcessor.apvts, "LowCut Slope", lowCutSlopeSlider),
+    highCutSlopeSliderAttachment(audioProcessor.apvts, "HighCut Slope", highCutSlopeSlider)
+{
+    // Make sure that before the constructor has finished, you've set the
+    // editor's size to whatever you need it to be.
+    for (auto* comp : getComps())
+    {
+        addAndMakeVisible(comp);
+    }
+
+    setSize (600, 400);
+}
+
+_3Band_EQAudioProcessorEditor::~_3Band_EQAudioProcessorEditor()
+{
+
+}
+
+//==============================================================================
+void _3Band_EQAudioProcessorEditor::paint (juce::Graphics& g)
+{
+    // (Our component is opaque, so we must completely fill the background with a solid colour)
+    using namespace juce;
+
+    g.fillAll(Colours::black);
+}
+
 void _3Band_EQAudioProcessorEditor::resized()
 {
     // This is generally where you'll want to lay out the positions of any
@@ -146,6 +187,8 @@ void _3Band_EQAudioProcessorEditor::resized()
 
     auto bounds = getLocalBounds();
     auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+
+    responseCurveComponent.setBounds(responseArea);
 
     auto lowCutArea = bounds.removeFromLeft(bounds.getWidth() * 0.33);
     auto highCutArea = bounds.removeFromRight(bounds.getWidth() * 0.5);
@@ -161,31 +204,6 @@ void _3Band_EQAudioProcessorEditor::resized()
     peakQualitySlider.setBounds(bounds);
 }
 
-void _3Band_EQAudioProcessorEditor::parameterValueChanged(int parameterIndex, float newVlaue)
-{
-    parametersChanged.set(true);
-}
-
-void _3Band_EQAudioProcessorEditor::timerCallback()
-{
-    if (parametersChanged.compareAndSetBool(false, true)) 
-    {
-        auto sampleRate = audioProcessor.getSampleRate();
-        auto chainSettings = getChainSettings(audioProcessor.apvts);
-
-        auto peakCoefficients = makePeakFilter(chainSettings, sampleRate);
-        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-
-        auto lowCutCoefficients = makeLowCutFilter(chainSettings, sampleRate);
-        auto highCutCoefficients = makeHighCutFilter(chainSettings, sampleRate);
-
-        updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
-        updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
-
-        repaint();
-    }
-}
-
 std::vector<juce::Component*> _3Band_EQAudioProcessorEditor::getComps()
 {
     return {
@@ -195,6 +213,7 @@ std::vector<juce::Component*> _3Band_EQAudioProcessorEditor::getComps()
         &lowCutFreqSlider,
         &highCutFreqSlider,
         &lowCutSlopeSlider,
-        &highCutSlopeSlider
+        &highCutSlopeSlider,
+        &responseCurveComponent
     };
 }
