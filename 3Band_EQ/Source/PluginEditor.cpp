@@ -178,6 +178,8 @@ ResponseCurveComponent::ResponseCurveComponent(_3Band_EQAudioProcessor& p) : aud
         param->addListener(this);
     }
 
+    updateChain();
+
     startTimer(60);
 }
 
@@ -199,20 +201,25 @@ void ResponseCurveComponent::timerCallback()
 {
     if (parametersChanged.compareAndSetBool(false, true))
     {
-        auto sampleRate = audioProcessor.getSampleRate();
-        auto chainSettings = getChainSettings(audioProcessor.apvts);
-
-        auto peakCoefficients = makePeakFilter(chainSettings, sampleRate);
-        updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
-
-        auto lowCutCoefficients = makeLowCutFilter(chainSettings, sampleRate);
-        auto highCutCoefficients = makeHighCutFilter(chainSettings, sampleRate);
-
-        updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
-        updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
-
-        repaint();
+        updateChain();
     }
+}
+
+void ResponseCurveComponent::updateChain()
+{
+    auto sampleRate = audioProcessor.getSampleRate();
+    auto chainSettings = getChainSettings(audioProcessor.apvts);
+
+    auto peakCoefficients = makePeakFilter(chainSettings, sampleRate);
+    updateCoefficients(monoChain.get<ChainPositions::Peak>().coefficients, peakCoefficients);
+
+    auto lowCutCoefficients = makeLowCutFilter(chainSettings, sampleRate);
+    auto highCutCoefficients = makeHighCutFilter(chainSettings, sampleRate);
+
+    updateCutFilter(monoChain.get<ChainPositions::LowCut>(), lowCutCoefficients, chainSettings.lowCutSlope);
+    updateCutFilter(monoChain.get<ChainPositions::HighCut>(), highCutCoefficients, chainSettings.highCutSlope);
+
+    repaint();
 }
 
 void ResponseCurveComponent::paint(juce::Graphics& g)
@@ -349,7 +356,7 @@ _3Band_EQAudioProcessorEditor::_3Band_EQAudioProcessorEditor (_3Band_EQAudioProc
         addAndMakeVisible(comp);
     }
 
-    setSize (600, 400);
+    setSize (600, 480);
 }
 
 _3Band_EQAudioProcessorEditor::~_3Band_EQAudioProcessorEditor()
@@ -372,9 +379,12 @@ void _3Band_EQAudioProcessorEditor::resized()
     // subcomponents in your editor..
 
     auto bounds = getLocalBounds();
-    auto responseArea = bounds.removeFromTop(bounds.getHeight() * 0.33);
+    float hRatio = 25.f / 100.f;
+    auto responseArea = bounds.removeFromTop(bounds.getHeight() * hRatio);
 
     responseCurveComponent.setBounds(responseArea);
+
+    bounds.removeFromTop(5);
 
     auto lowCutArea = bounds.removeFromLeft(bounds.getWidth() * 0.33);
     auto highCutArea = bounds.removeFromRight(bounds.getWidth() * 0.5);
