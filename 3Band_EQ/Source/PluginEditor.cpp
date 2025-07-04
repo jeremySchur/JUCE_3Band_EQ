@@ -322,14 +322,12 @@ void ResponseCurveComponent::resized()
 
     Graphics g(background);
 
-    g.setColour(Colours::dimgrey);
-
     auto renderArea = getAnalysisArea();
     auto left = renderArea.getX();
     auto right = renderArea.getRight();
     auto top = renderArea.getY();
     auto bottom = renderArea.getBottom();
-    auto widtch = renderArea.getWidth();
+    auto width = renderArea.getWidth();
 
     Array<float> xs;
 
@@ -344,24 +342,14 @@ void ResponseCurveComponent::resized()
     for (auto f : freqs)
     {
         auto normX = mapFromLog10(f, 20.f, 20000.f);
-        xs.add(left + widtch * normX);
+        xs.add(left + width * normX);
     }
+
+    g.setColour(Colours::dimgrey);
 
     for (auto x : xs)
     {
         g.drawVerticalLine(x, top, bottom);
-    }
-
-    Array<float> gain
-    {
-        -24, -12, 0, 12, 24
-    };
-
-    for (auto gDb : gain)
-    {
-        auto y = jmap(gDb, -24.f, 24.f, float(bottom), float(top));
-        g.setColour(gDb == 0.f ? Colour(0u, 172u, 1u) : Colours::darkgrey);
-        g.drawHorizontalLine(y, left, right);
     }
 
     g.setColour(Colours::lightgrey);
@@ -397,6 +385,44 @@ void ResponseCurveComponent::resized()
 
         g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
+
+    Array<float> gain
+    {
+        -24, -12, 0, 12, 24
+    };
+
+    g.setColour(Colours::dimgrey);
+
+    for (auto gDb : gain)
+    {
+        auto y = jmap(gDb, -24.f, 24.f, float(bottom), float(top));
+        g.drawHorizontalLine(y, left, right);
+    }
+
+    for (auto gDb : gain)
+    {
+        auto y = jmap(gDb, -24.f, 24.f, float(bottom), float(top));
+        
+        String str;
+        if (gDb > 0)
+        {
+            str << "+";
+        }
+        str << gDb;
+
+        auto textWidth = g.getCurrentFont().getStringWidth(str);
+
+        Rectangle<int> r;
+        r.setSize(textWidth, fontHeight);
+        r.setX(getWidth() - textWidth);
+        r.setCentre(r.getCentreX(), y);
+
+        g.setColour(gDb == 0.f ? Colour(0u, 172u, 1u) : Colours::lightgrey);
+
+        g.drawFittedText(str, r, juce::Justification::centred, 1);
+    }
+
+
 }
 
 juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
