@@ -103,6 +103,9 @@ void _3Band_EQAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     rightChain.prepare(spec);
 
     updateFilters();
+
+    leftChannelFifo.prepare(samplesPerBlock);
+    rightChannelFifo.prepare(samplesPerBlock);
 }
 
 void _3Band_EQAudioProcessor::releaseResources()
@@ -164,6 +167,9 @@ void _3Band_EQAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
     leftChain.process(leftContext);
     rightChain.process(rightContext);
+
+    leftChannelFifo.update(buffer);
+    rightChannelFifo.update(buffer);
 }
 
 //==============================================================================
