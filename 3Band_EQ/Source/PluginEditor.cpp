@@ -430,8 +430,6 @@ void ResponseCurveComponent::resized()
         g.setColour(Colours::lightgrey);
         g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
-
-
 }
 
 juce::Rectangle<int> ResponseCurveComponent::getRenderArea()
