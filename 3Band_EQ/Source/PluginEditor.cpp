@@ -335,9 +335,9 @@ void ResponseCurveComponent::resized()
 
     Array<float>freqs
     {
-        20, 30, 40, 50, 100,
-        200, 300, 400, 500, 1000,
-        2000, 3000, 4000, 5000, 10000,
+        20, 50, 100,
+        200, 500, 1000,
+        2000, 5000, 10000,
         20000
     };
 
@@ -362,6 +362,40 @@ void ResponseCurveComponent::resized()
         auto y = jmap(gDb, -24.f, 24.f, float(bottom), float(top));
         g.setColour(gDb == 0.f ? Colour(0u, 172u, 1u) : Colours::darkgrey);
         g.drawHorizontalLine(y, left, right);
+    }
+
+    g.setColour(Colours::lightgrey);
+    const int fontHeight = 10;
+    g.setFont(fontHeight);
+
+    for (int i = 0; i < freqs.size(); ++i)
+    {
+        auto f = freqs[i];
+        auto x = xs[i];
+
+        bool addK = false;
+        String str;
+        if (f > 999.f)
+        {
+            addK = true;
+            f /= 1000.f;
+        }
+
+        str << f;
+        if (addK)
+        {
+            str << "k";
+        }
+        str << "Hz";
+
+        auto textWidth = g.getCurrentFont().getStringWidth(str);
+
+        Rectangle<int> r;
+        r.setSize(textWidth, fontHeight);
+        r.setCentre(x, 0);
+        r.setY(1);
+
+        g.drawFittedText(str, r, juce::Justification::centred, 1);
     }
 }
 
